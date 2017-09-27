@@ -4,22 +4,35 @@ Drop-in replacement for the `Crazy Awesome ESP E-Ngine API Client` component.
 Connect to iConneqt REST API, mimicking deprecated E-Ngine behaviour.
 
 ## Information ##
+ - [Crazy Awesome ESP E-Ngine API Client](https://github.com/CrazyAwesomeCompany/esp-api-engine)
  - [iConneqt](https://iconneqt.nl/)
- - [iConneqt REST API](https://demo.iconneqt.nl/api/docs/)
+ - [iConneqt REST API documentation](https://demo.iconneqt.nl/api/docs/)
+ - [iConneqt PHP REST API client](https://github.com/iConneqt/PHP-REST-API-client)
 
 ## Installation ##
-Preferred way of installing is though [Composer](http://getcomposer.org). Add the following line to you `require`
+Preferred way of installing is though [Composer](http://getcomposer.org).
+Install using composer:
 
-    "iconneqt/cac-e-ngine-client": ">=v0.1"
+	composer require iconneqt/rest-api-client
+
+Or add the following item to the `require` section of your `composer.json` file.
+
+    "iconneqt/cac-e-ngine-client": "*"
+
+Update composer using `composer update`.
+
+This component requires the iConneqt PHP REST API client, which should be
+automatically installed when updating composer.
 
 ## API Configuration ##
-The Adapter uses the E-Ngine SOAP Webservice for communication. When creating the `EngineApi` class some configuration is needed
+The Adapter uses the iConneqt REST API to emulate behaviour of the E-ngine SOAP
+Webservice.
+When creating the `EngineApi` class some configuration is needed;
 
- + `domain` - The domain where E-Ngine is availabe. (e.g. `newsletter.yourdomain.com`)
- + `path` - Path to the SOAP entry point on the `domain`. (e.g. `/soap/server.live.php`)
- + `customer` - Your E-Ngine customer name
- + `user` - Your E-Ngine user name
- + `password` - Your E-Ngine password
+ + `domain` - The domain where iConneqt is availabe. (e.g. `crm01.iconneqt.nl`)
+ + `user` - Your iConneqt user name
+ + `password` - Your iConneqt password or API token (contact iConneqt).
 
 ## Todo ##
-The API Client doesn't have all calls implemented at the moment. To use the latest version download the development version.
+The API Client doesn't have all calls implemented at the moment.
+To use the latest version download the development version.
