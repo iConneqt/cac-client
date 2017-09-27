@@ -269,7 +269,7 @@ class EngineApi implements EngineApiInterface
 		return array_map(function($list) {
 			return [
 				'mailinglistid'	=> $list->id,
-				'uniqueid'	=> $list->id,
+				'uniqueid' => $list->id,
 				'name' => $list->name,
 			];
 		}, $lists);
