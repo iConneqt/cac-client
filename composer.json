@@ -1,0 +1,29 @@
+{
+    "name": "iconneqt/cac-client",
+    "description": "iConneqt compatibility layer for Crazy Awesome ESP E-Ngine API Client",
+    "keywords": ["iconneqt", "Email Service Provider", "esp", "email", "e-ngine"],
+    "homepage": "http://iconneqt.nl",
+    "license": "BSD-3-Clause",
+    "support": {
+        "issues": "https://github.com/iconneqt/cac-client",
+        "source": "https://github.com/iconneqt/cac-client"
+    },
+    "autoload": {
+        "psr-0": {
+            "\\CAC\\Component\\ESP\\Api\\Engine": "lib/"
+        },
+        "classmap": [ "lib/" ]
+    },
+	"require": {
+		"php": ">=5.4.0",
+		"iconneqt/rest-api-client": "^1.0"
+	},	
+    "authors": [
+        {
+            "name": "Martijn van der Lee",
+            "email": "martijn@crmmailtech.nl",
+            "homepage": "http://iconneqt.nl",
+            "role": "Developer"
+        }
+    ]
+}
