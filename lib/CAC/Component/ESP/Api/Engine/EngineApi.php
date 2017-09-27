@@ -5,7 +5,8 @@ namespace CAC\Component\ESP\Api\Engine;
 /**
  * iConneqt E-Ngine compatibility layer
  *
- * Api Client to connect to the E-Ngine ESP webservice.
+ * API Client to connect to the iConneqt REST API
+ * Serves as a drop-in replacement for the CAC E-ngine client.
  *
  * @copyright (c) 2017, Advanced CRMMail Technology B.V., Netherlands
  * @license BDS-3-clause
