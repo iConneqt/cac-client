@@ -83,15 +83,16 @@ class EngineApi implements EngineApiInterface
 				'html' => utf8_encode($htmlContent),
 				'text' => utf8_encode($textContent),
 			]);
-
+			
 			$deliveryid = $this->client->put("newsletters/{$newsletterid}/deliveries", [
 				'list' => $this->listid,
 				'from_name' => $fromName,
 				'from_email' => $fromEmail,
 				'reply_email' => $replyTo,
 			]);
+			var_dump($deliveryid);
 		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
-			throw new EngineApiException(sprintf('Could not create mailing from content. Engine Result: [%s]', $e->getMessage()));
+			throw new EngineApiException(sprintf('Could not create mailing from content. Engine Result: [%s]', (string) $e));
 		}
 
 		return $deliveryid;
@@ -141,7 +142,7 @@ class EngineApi implements EngineApiInterface
 				'reply_email' => $replyTo,
 			]);
 		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
-			throw new EngineApiException(sprintf('Could not create mailing from template. Engine Result: [%s]', $e->getMessage()));
+			throw new EngineApiException(sprintf('Could not create mailing from template. Engine Result: [%s]', (string) $e));
 		}
 
 		return $deliveryid;
@@ -149,13 +150,14 @@ class EngineApi implements EngineApiInterface
 
 	public function sendMailing($mailingId, array $users, $date = null, $mailinglistId = null)
 	{
+		// $mailinglistId is ignored. Must be set for during creation of delivery
+		
 		if (null === $date) {
 			$date = date("Y-m-d H:i:s");
 		} elseif ($date instanceof \DateTime) {
 			$date = $date->format("Y-m-d H:i:s");
 		}
 
-		// $mailinglistId is ignored. Must be set for during creation of delivery
 		// Check if users are set
 		if (empty($users)) {
 			throw new EngineApiException("No users to send mailing");
@@ -180,7 +182,7 @@ class EngineApi implements EngineApiInterface
 				]);
 			}
 		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
-			throw new EngineApiException(sprintf('Could not send mailing [%d]. Engine Result: [%s]', $mailingId, $e->getMessage()));
+			throw new EngineApiException(sprintf('Could not send mailing [%d]. Engine Result: [%s]', $mailingId, (string) $e));
 		}
 
 		// Return number of users. In any failed, an exception has been thrown.
@@ -216,7 +218,7 @@ class EngineApi implements EngineApiInterface
 						}, $attachments),
 			]);
 		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
-			throw new EngineApiException(sprintf('Could not send mailing [%d]. Engine Result: [%s]', $mailingId, $e->getMessage()));
+			throw new EngineApiException(sprintf('Could not send mailing [%d]. Engine Result: [%s]', $mailingId, (string) $e));
 		}
 
 		return true;
@@ -253,7 +255,7 @@ class EngineApi implements EngineApiInterface
 				'status' => 'unsubscribed',
 			]);
 		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
-			throw new EngineApiException(sprintf('User not unsubscribed from mailinglist. Engine Result: [%s]', $e->getMessage()));
+			throw new EngineApiException(sprintf('User not unsubscribed from mailinglist. Engine Result: [%s]', (string) $e));
 		}
 
 		return 'OK';
@@ -264,7 +266,7 @@ class EngineApi implements EngineApiInterface
 		try {
 			$lists = $this->client->get("lists");
 		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
-			throw new EngineApiException(sprintf('User not unsubscribed from mailinglist. Engine Result: [%s]', $e->getMessage()));
+			throw new EngineApiException(sprintf('User not unsubscribed from mailinglist. Engine Result: [%s]', (string) $e));
 		}
 
 		return array_map(function($list) {
