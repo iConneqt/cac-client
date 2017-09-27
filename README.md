@@ -32,6 +32,10 @@ When creating the `EngineApi` class some configuration is needed;
  + `user` - Your iConneqt user name
  + `password` - Your iConneqt password or API token (contact iConneqt).
 
-## Todo ##
-The API Client doesn't have all calls implemented at the moment.
-To use the latest version download the development version.
+## Compatibility notes ##
+### Mailinglist ID ###
+Although strongly recommended, the E-ngine SOAP API did not require mailinglist
+ID's to be provided before sending mailings to recipients. iConneqt requires the
+mailinglist ID to be selected before creating a new mailing.
+You can set the mailinglist ID through configuration during construction or by
+calling the `selectMailingList()` method.
