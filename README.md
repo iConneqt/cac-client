@@ -11,7 +11,6 @@ Connect to iConneqt REST API, mimicking deprecated E-Ngine behaviour.
 
 ## Installation ##
 Preferred way of installing is though [Composer](http://getcomposer.org).
-Install using composer:
 
 	composer require iconneqt/rest-api-client
 
