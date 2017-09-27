@@ -16,7 +16,7 @@ Preferred way of installing is though [Composer](http://getcomposer.org).
 
 Or add the following item to the `require` section of your `composer.json` file.
 
-    "iconneqt/cac-e-ngine-client": "*"
+    "iconneqt/cac-client": "*"
 
 Update composer using `composer update`.
 
