@@ -14,18 +14,19 @@ namespace CAC\Component\ESP\Api\Engine;
  */
 class EngineApi implements EngineApiInterface
 {
-    /**
-     * Api configuration
-     * @var array
-     */
-    private $config;	
-	
+
+	/**
+	 * Api configuration
+	 * @var array
+	 */
+	private $config;
+
 	/**
 	 * iConneqt REST API Client (direct connection)
 	 * @var \Iconneqt\Api\Rest\Client\Client 
 	 */
 	private $client;
-	
+
 	/**
 	 * Default mailing list
 	 * @var int
@@ -36,195 +37,199 @@ class EngineApi implements EngineApiInterface
 	 * @param array $config
 	 * @throws EngineApiException
 	 */
-    public function __construct(array $config)
-    {
-        $this->config = array_replace_recursive(
-            array(
-                "wsdl" => null,
-                "secure" => false,
-                "domain" => "demo.iconneqt.nl",	// "",
-				"path" => "",	// "path" => "/soap/server.live.php",
-                "customer" => "",
-                "user" => "",
-                "password" => "",
-                "trace" => false,
-                "mailinglist" => null,
-            ),
-            $config
-        );
-		
-		if (empty($this->config['mailinglist'])) {
-			throw new EngineApiException("Configuration parameter `mailinglist` not set. Must be set.");
-		} else {
+	public function __construct(array $config)
+	{
+		$this->config = array_replace_recursive(
+				array(
+			"wsdl" => null,
+			"secure" => false,
+			"domain" => "demo.iconneqt.nl", // "",
+			"path" => "", // "path" => "/soap/server.live.php",
+			"customer" => "",
+			"user" => "",
+			"password" => "",
+			"trace" => false,
+			"mailinglist" => null,
+				), $config
+		);
+
+		if (!empty($this->config['mailinglist'])) {
 			$this->listid = (int) $this->config['mailinglist'];
 		}
-		
+
 		$this->client = new \Iconneqt\Api\Rest\Client\Client('https://' . $this->config['domain'], $this->config['user'], $this->config['password']);
-    }
+	}
 
-    public function createMailingFromContent($htmlContent, $textContent, $subject, $fromName, $fromEmail, $replyTo = null, $title = null)
-    {
-        if (null === $replyTo) {
-            $replyTo = $fromEmail;
-        }
+	public function createMailingFromContent($htmlContent, $textContent, $subject, $fromName, $fromEmail, $replyTo = null, $title = null)
+	{
+		if (!$this->listid) {
+			throw new EngineApiException("No `mailinglist` selected");
+		}
 
-        if (null === $title) {
-            $title = $subject;
-        }
-		
+		if (null === $replyTo) {
+			$replyTo = $fromEmail;
+		}
+
+		if (null === $title) {
+			$title = $subject;
+		}
+
 		// E-ngine Mailing = iConneqt newsletter + delivery
 		try {
 			$newsletterid = $this->client->put("newsletters", [
-				'name'		=> utf8_encode($title),
-				'subject'	=> utf8_encode($subject),
-				'html'		=> utf8_encode($htmlContent),
-				'text'		=> utf8_encode($textContent),
-			]);	
-			
+				'name' => utf8_encode($title),
+				'subject' => utf8_encode($subject),
+				'html' => utf8_encode($htmlContent),
+				'text' => utf8_encode($textContent),
+			]);
+
 			$deliveryid = $this->client->put("newsletters/{$newsletterid}/deliveries", [
-				'list'			=> $this->listid,
-				'from_name'		=> $fromName,
-				'from_email'	=> $fromEmail,
-				'reply_email'	=> $replyTo,
+				'list' => $this->listid,
+				'from_name' => $fromName,
+				'from_email' => $fromEmail,
+				'reply_email' => $replyTo,
 			]);
 		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
 			throw new EngineApiException(sprintf('Could not create mailing from content. Engine Result: [%s]', $e->getMessage()));
 		}
-		
+
 		return $deliveryid;
-    }
+	}
 
-    public function createMailingFromTemplate($templateId, $subject, $fromName, $fromEmail, $replyTo = null, $title = null)
-    {
-        return $this->createMailingFromTemplateWithReplacements($templateId, [], $subject, $fromName, $fromEmail, $replyTo = null, $title = null);
-    }
-	
-    public function createMailingFromTemplateWithReplacements($templateId, $replacements, $subject, $fromName, $fromEmail, $replyTo = null, $title = null)
-    {
-        if (null === $replyTo) {
-            $replyTo = $fromEmail;
-        }
+	public function createMailingFromTemplate($templateId, $subject, $fromName, $fromEmail, $replyTo = null, $title = null)
+	{
+		return $this->createMailingFromTemplateWithReplacements($templateId, [], $subject, $fromName, $fromEmail, $replyTo = null, $title = null);
+	}
 
-        if (null === $title) {
-            $title = $subject;
-        }
-		
+	public function createMailingFromTemplateWithReplacements($templateId, $replacements, $subject, $fromName, $fromEmail, $replyTo = null, $title = null)
+	{
+		if (!$this->listid) {
+			throw new EngineApiException("No `mailinglist` selected");
+		}
+
+		if (null === $replyTo) {
+			$replyTo = $fromEmail;
+		}
+
+		if (null === $title) {
+			$title = $subject;
+		}
+
 		// $replacements is map of [ from => to ], with a `{{key}}` pattern
 		$fromto = [];
-        foreach ($replacements as $key => $val) {
+		foreach ($replacements as $key => $val) {
 			$fromto[] = [
-				'from'	=> '{{' . $key . '}}',
-				'to'	=> utf8_encode($val),
+				'from' => '{{' . $key . '}}',
+				'to' => utf8_encode($val),
 			];
-        }
+		}
 
 		// E-ngine Mailing = iConneqt newsletter + delivery
 		try {
 			$newsletterid = $this->client->put("newsletters", [
-				'name'			=> utf8_encode($title),
-				'template'		=> $templateId,
-				'subject'		=> $subject,	// overwrites template subject
-				'replacements'	=> $fromto,
-			]);	
-			
+				'name' => utf8_encode($title),
+				'template' => $templateId,
+				'subject' => $subject, // overwrites template subject
+				'replacements' => $fromto,
+			]);
+
 			$deliveryid = $this->client->put("newsletters/{$newsletterid}/deliveries", [
-				'list'			=> $this->listid,
-				'from_name'		=> $fromName,
-				'from_email'	=> $fromEmail,
-				'reply_email'	=> $replyTo,
+				'list' => $this->listid,
+				'from_name' => $fromName,
+				'from_email' => $fromEmail,
+				'reply_email' => $replyTo,
 			]);
 		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
 			throw new EngineApiException(sprintf('Could not create mailing from template. Engine Result: [%s]', $e->getMessage()));
 		}
-		
-		return $deliveryid;
-    }
 
-    public function sendMailing($mailingId, array $users, $date = null, $mailinglistId = null)
-    {
-        if (null === $date) {
-            $date = date("Y-m-d H:i:s");
-        } elseif ($date instanceof \DateTime) {
-            $date = $date->format("Y-m-d H:i:s");
-        }
+		return $deliveryid;
+	}
+
+	public function sendMailing($mailingId, array $users, $date = null, $mailinglistId = null)
+	{
+		if (null === $date) {
+			$date = date("Y-m-d H:i:s");
+		} elseif ($date instanceof \DateTime) {
+			$date = $date->format("Y-m-d H:i:s");
+		}
 
 		// $mailinglistId is ignored. Must be set for during creation of delivery
+		// Check if users are set
+		if (empty($users)) {
+			throw new EngineApiException("No users to send mailing");
+		}
 
-        // Check if users are set
-        if (empty($users)) {
-            throw new EngineApiException("No users to send mailing");
-        }
-		
 		// E-ngine mailing = iConneqt delivery
 		// E-ngine mailing-subscriber = iConneqt delivery-recipient
 		try {
-			foreach ($users as $user) {				
+			foreach ($users as $user) {
 				$email = $user['email'];
 				unset($user['email']);
-				
+
 				$this->client->post("deliveries/{$mailingId}/recipients", [
-					'emailaddress'	=> $email,
-					'senddate'		=> $date,
-					'fields'		=> array_map(function($value, $field) {
-											return [
-												'field'	=> $field,
-												'value' => $value,							
-											];
-										}, $user, array_keys($user)),
+					'emailaddress' => $email,
+					'senddate' => $date,
+					'fields' => array_map(function($value, $field) {
+								return [
+									'field' => $field,
+									'value' => $value,
+								];
+							}, $user, array_keys($user)),
 				]);
 			}
 		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
 			throw new EngineApiException(sprintf('Could not send mailing [%d]. Engine Result: [%s]', $mailingId, $e->getMessage()));
 		}
-		
+
 		// Return number of users. In any failed, an exception has been thrown.
 		return count($users);
-    }
+	}
 
-    public function sendMailingWithAttachment($mailingId, array $user, $date = null, $mailinglistId = null, $attachments = array())
-    {
+	public function sendMailingWithAttachment($mailingId, array $user, $date = null, $mailinglistId = null, $attachments = array())
+	{
 		// $mailinglistId is not used in iConneqt.
 
 		if (null === $date) {
-            $date = date("Y-m-d H:i:s");
-        } elseif ($date instanceof \DateTime) {
-            $date = $date->format("Y-m-d H:i:s");
-        }
+			$date = date("Y-m-d H:i:s");
+		} elseif ($date instanceof \DateTime) {
+			$date = $date->format("Y-m-d H:i:s");
+		}
 
-        // Check if user is set
-        if (empty($user)) {
-            throw new EngineApiException("No user to send mailing");
-        }
+		// Check if user is set
+		if (empty($user)) {
+			throw new EngineApiException("No user to send mailing");
+		}
 
 		// E-ngine mailing = iConneqt delivery
 		// E-ngine mailing-subscriber = iConneqt delivery-recipient
 		try {
 			$this->client->post("deliveries/{$mailingId}/recipients", [
-				'emailaddress'	=> $user,
-				'senddate'		=> $date,
-				'attachments'	=> array_map(function($url) {
-										return [
-											'url'	=> $url,
-											'name'	=> basename(parse_url($url, PHP_URL_PATH)),
-										];
-									}, $attachments),											
+				'emailaddress' => $user,
+				'senddate' => $date,
+				'attachments' => array_map(function($url) {
+							return [
+								'url' => $url,
+								'name' => basename(parse_url($url, PHP_URL_PATH)),
+							];
+						}, $attachments),
 			]);
 		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
 			throw new EngineApiException(sprintf('Could not send mailing [%d]. Engine Result: [%s]', $mailingId, $e->getMessage()));
 		}
 
-        return true;
-    }
-
-    public function selectMailinglist($mailinglistId)
-    {
-		$this->listid = $mailinglistId;
-				
 		return true;
-    }
+	}
 
-    public function subscribeUser(array $user, $mailinglistId, $confirmed = false)
-    {
+	public function selectMailinglist($mailinglistId)
+	{
+		$this->listid = $mailinglistId;
+
+		return true;
+	}
+
+	public function subscribeUser(array $user, $mailinglistId, $confirmed = false)
+	{
 // @todo assume what is in the $user array?		
 //        $result = $this->performRequest('Subscriber_set', $user, !$confirmed, $mailinglistId);
 //
@@ -236,33 +241,42 @@ class EngineApi implements EngineApiInterface
 //        }
 //
 //        return $result;
-    }
+	}
 
-    public function unsubscribeUser($email, $mailinglistId, $confirmed = false)
-    {
+	public function unsubscribeUser($email, $mailinglistId, $confirmed = false)
+	{
 		// $mailinglistId and $confirmed are not used by iConneqt
-		
+
 		try {
 			$this->client->post("subscribers/{$email}/status", [
-				'status'	=> 'unsubscribed',
+				'status' => 'unsubscribed',
 			]);
 		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
 			throw new EngineApiException(sprintf('User not unsubscribed from mailinglist. Engine Result: [%s]', $e->getMessage()));
 		}
-		
-		return 'OK';
-    }
-	
-    public function getMailinglists()
-    {
-//@todo what does this call return in E-ngine. Wiki still down?		
-//        $result = $this->performRequest('Mailinglist_all');
-//
-//        return $result;
-    }
 
-    public function getMailinglistUnsubscriptions($mailinglistId, \DateTime $from, \DateTime $till = null)
-    {
+		return 'OK';
+	}
+
+	public function getMailinglists()
+	{
+		try {
+			$lists = $this->client->get("lists");
+		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
+			throw new EngineApiException(sprintf('User not unsubscribed from mailinglist. Engine Result: [%s]', $e->getMessage()));
+		}
+
+		return array_map(function($list) {
+			return [
+				'mailinglistid'	=> $list->id,
+				'uniqueid'	=> $list->id,
+				'name' => $list->name,
+			];
+		}, $lists);
+	}
+
+	public function getMailinglistUnsubscriptions($mailinglistId, \DateTime $from, \DateTime $till = null)
+	{
 //@todo not yet implemented
 //        if (null === $till) {
 //            // till now if no till is given
@@ -279,10 +293,10 @@ class EngineApi implements EngineApiInterface
 //        );
 //
 //        return $result;
-    }
+	}
 
-    public function getMailinglistUser($mailinglistId, $email, $columns=array())
-    {
+	public function getMailinglistUser($mailinglistId, $email, $columns = array())
+	{
 //@todo not yet implemented
 //        if (count($columns) == 0) {
 //            $columns = array('email', 'firstname', 'infix', 'lastname');
@@ -296,10 +310,11 @@ class EngineApi implements EngineApiInterface
 //        );
 //
 //        return $result;
-    }
+	}
 
-    public function setLogger()
-    {
-        // deprecated
-    }
+	public function setLogger()
+	{
+		// deprecated
+	}
+
 }
