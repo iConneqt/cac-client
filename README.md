@@ -39,3 +39,6 @@ ID's to be provided before sending mailings to recipients. iConneqt requires the
 mailinglist ID to be selected before creating a new mailing.
 You can set the mailinglist ID through configuration during construction or by
 calling the `selectMailingList()` method.
+
+### Logger ###
+Support for the PSR logger is removed.
