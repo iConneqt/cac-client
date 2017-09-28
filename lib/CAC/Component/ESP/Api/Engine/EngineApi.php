@@ -61,8 +61,7 @@ class EngineApi implements EngineApiInterface
 	 */
 	public function __construct(array $config)
 	{
-		$this->config = array_replace_recursive(
-				array(
+		$this->config = array_replace_recursive([
 			"wsdl" => null,
 			"secure" => false,
 			"domain" => "demo.iconneqt.nl", // "",
@@ -72,7 +71,7 @@ class EngineApi implements EngineApiInterface
 			"password" => "",
 			"trace" => false,
 			"mailinglist" => null,
-				), $config
+				], $config
 		);
 
 		if (!empty($this->config['mailinglist'])) {
@@ -424,27 +423,55 @@ class EngineApi implements EngineApiInterface
 	/**
 	 * Get Mailinglist Subscriber information
 	 *
-	 * @param integer $mailinglistId
-	 * @param string  $email
-	 * @param array   $columns
+	 * @param null|integer $mailinglistId Use selected list if null.
+	 * @param string $email
+	 * @param array $columns
 	 *
 	 * @return array
 	 */
-	public function getMailinglistUser($mailinglistId, $email, $columns = array())
+	public function getMailinglistUser($mailinglistId = null, $email, $columns = array())
 	{
-//@todo not yet implemented
-//        if (count($columns) == 0) {
-//            $columns = array('email', 'firstname', 'infix', 'lastname');
-//        }
-//
-//        $result = $this->performRequest(
-//            'Subscriber_getByEmail',
-//            $email,
-//            $columns,
-//            $mailinglistId
-//        );
-//
-//        return $result;
+		if ($mailinglistId === null) {
+			if ($this->listid) {
+				$mailinglistId = $this->listid;
+			} else {
+				throw new EngineApiException("No `mailinglist` selected");
+			}
+		}
+
+		if (empty($columns)) {
+			$columns = ['email', 'firstname', 'infix', 'lastname'];
+		}
+
+		try {
+			$fields = $this->client->get("lists/{$mailinglistId}/fields", null, false, false);
+			$subscriber = $this->client->get("lists/{$mailinglistId}/subscribers/{$email}", null, false, false);
+			$data = $this->client->get("subscribers/{$subscriber->id}/fields", null, false, false);
+			$result = [];
+			
+			foreach ($columns as $column) {
+				if ($column == 'email') {
+					$result['email'] = $subscriber->email;
+				}
+				
+				$role = isset(self::$fieldrole_translations[$column]) ? self::$fieldrole_translations[$column] : null;
+				foreach ($fields as $field) {
+					if (($role && $field->role == $role) || ($field->name == $column) || ($field->id == $column)) {
+						$fieldid = $field->id;
+						foreach ($data as $datum) {
+							if ($datum->id == $field->id) {
+								$result[$column] = $datum->value;
+								continue 3;
+							}
+						}
+					}
+				}
+			}
+			
+			return $result;
+		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
+			throw new EngineApiException(sprintf('User not on mailinglist. Engine Result: [%s]', (string) $e));
+		}
 	}
 
 	public function setLogger()
