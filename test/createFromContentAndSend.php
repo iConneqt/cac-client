@@ -11,8 +11,8 @@ $config = parse_ini_file('config.ini', true, INI_SCANNER_RAW);
 
 $Client = new \CAC\Component\ESP\Api\Engine\EngineApi($config);
 
-$result = $Client->createMailingFromContent('<h1>HTML</h1>body', 'Text body', 'Subject', 'John Doe', 'johndoe@example.test');
-var_dump($result);
+$deliveryid = $Client->createMailingFromContent('<h1>HTML</h1>body', 'Text body', 'Subject', 'John Doe', 'johndoe@example.test');
+var_dump('Delivery ID', $deliveryid);
 
-$result = $Client->sendMailing(NULL, [ $config['recipient'] ]);
-var_dump($result);
+$recipientid = $Client->sendMailing($deliveryid, [ $config['recipient'] ]);
+var_dump('Delivery recipient ID', $recipientid);
