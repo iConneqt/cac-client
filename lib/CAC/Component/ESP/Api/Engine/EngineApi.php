@@ -150,10 +150,6 @@ class EngineApi implements EngineApiInterface
 	{
 		return $this->createMailingFromTemplateWithReplacements($templateId, [], $subject, $fromName, $fromEmail, $replyTo = null, $title = null);
 	}
-	
-	private static function replaceFieldMarkers($content) {
-		return preg_replace('/(?:{{([^}]+)}})/', '%%\\1%%', $content);
-	}
 
 	/**
 	 * Create a new mailing based on an iConneqt Template
@@ -454,6 +450,16 @@ class EngineApi implements EngineApiInterface
 	public function setLogger()
 	{
 		// deprecated
+	}
+
+	/**
+	 * Replace `{{name}}` with `%%name%%` patterns in content
+	 * @param string $content
+	 * @return string
+	 */
+	private static function replaceFieldMarkers($content)
+	{
+		return preg_replace('/(?:{{([^}]+)}})/', '%%\\1%%', $content);
 	}
 
 }
