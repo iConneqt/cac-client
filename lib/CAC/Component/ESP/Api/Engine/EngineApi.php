@@ -114,9 +114,9 @@ class EngineApi implements EngineApiInterface
 		try {
 			$newsletterid = $this->client->put("newsletters", [
 				'name' => utf8_encode($title),
-				'subject' => utf8_encode($subject),
-				'html' => utf8_encode($htmlContent),
-				'text' => utf8_encode($textContent),
+				'subject' => utf8_encode(self::replaceFieldMarkers($subject)),
+				'html' => utf8_encode(self::replaceFieldMarkers($htmlContent)),
+				'text' => utf8_encode(self::replaceFieldMarkers($textContent)),
 					], null, false, false);
 
 			$deliveryid = $this->client->put("newsletters/{$newsletterid}/deliveries", [
@@ -150,6 +150,10 @@ class EngineApi implements EngineApiInterface
 	{
 		return $this->createMailingFromTemplateWithReplacements($templateId, [], $subject, $fromName, $fromEmail, $replyTo = null, $title = null);
 	}
+	
+	private static function replaceFieldMarkers($content) {
+		return preg_replace('/(?:{{([^}]+)}})/', '%%\\1%%', $content);
+	}
 
 	/**
 	 * Create a new mailing based on an iConneqt Template
@@ -180,12 +184,12 @@ class EngineApi implements EngineApiInterface
 			$title = $subject;
 		}
 
-		// $replacements is map of [ from => to ], with a `{{key}}` pattern
+		// $replacements is map of [ from => to ], with a `%%key%%` pattern
 		$fromto = [];
-		foreach ($replacements as $key => $val) {
+		foreach ($replacements as $key => $value) {
 			$fromto[] = [
-				'from' => '{{' . $key . '}}',
-				'to' => utf8_encode($val),
+				'from' => '%%' . $key . '%%',
+				'to' => utf8_encode($value),
 			];
 		}
 
@@ -194,7 +198,7 @@ class EngineApi implements EngineApiInterface
 			$newsletterid = $this->client->put("newsletters", [
 				'name' => utf8_encode($title),
 				'template' => $templateId,
-				'subject' => $subject, // overwrites template subject
+				'subject' => self::replaceFieldMarkers($subject), // overwrites template subject
 				'replacements' => $fromto,
 					], null, false, false);
 
