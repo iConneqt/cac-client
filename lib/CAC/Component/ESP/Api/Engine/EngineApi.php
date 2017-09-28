@@ -194,14 +194,14 @@ class EngineApi implements EngineApiInterface
      * Send a created mailing
 	 * 
 	 * @param type $mailingId Unique identifier of the mailing to be send
-	 * @param array $users List of maps, one for each user. Each map must
-	 *	contain a key 'email' with the emailaddress of the user. Optional
-	 *	additional fields and values may be provided for replacement.
+	 * @param array $users List of maps width details of the recipients.
+	 *	The map contains a key 'email' with the emailaddress of the recipient.
+	 *  Optional additional fields and values may be provided for replacement.
 	 * @param \DateTime $date the date when to send.
-	 *	If the date is now or in history, the mail will be sent immediately
-	 *  (this may take a little longer to complete). If you are sending a lot of
-	 *	emails, you should set a date slightly in the future; mails will be send
-	 *	out within the next minute.
+	 *	If the date is now or in the past, the mail will be sent immediately.
+	 *  If you are sending a lot of	emails, you should set a date slightly in
+	 *  the future; mails will be send out within the next minute instead.
+	 * @param null $mailinglistId Deprecated
 	 * 
 	 * @return integer number of uses succesfully sent to
 	 * 
@@ -209,48 +209,37 @@ class EngineApi implements EngineApiInterface
 	 */
 	public function sendMailing($mailingId, array $users, $date = null, $mailinglistId = null)
 	{
-		// $mailinglistId is ignored. Must be set for during creation of delivery
-		
-		if (null === $date) {
-			$date = date("Y-m-d H:i:s");
-		} elseif ($date instanceof \DateTime) {
-			$date = $date->format("Y-m-d H:i:s");
-		}
-
 		// Check if users are set
 		if (empty($users)) {
 			throw new EngineApiException("No users to send mailing");
 		}
-
-		// E-ngine mailing = iConneqt delivery
-		// E-ngine mailing-subscriber = iConneqt delivery-recipient
-		try {
-			foreach ($users as $user) {
-				$email = $user['email'];
-				unset($user['email']);
-
-				$this->client->post("deliveries/{$mailingId}/recipients", [
-					'emailaddress' => $email,
-					'senddate' => $date,
-					'fields' => array_map(function($value, $field) {
-								return [
-									'field' => $field,
-									'value' => $value,
-								];
-							}, $user, array_keys($user)),
-				], null, false, false);
-			}
-		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
-			throw new EngineApiException(sprintf('Could not send mailing [%d]. Engine Result: [%s]', $mailingId, (string) $e));
-		}
+		
+		foreach ($users as $user) {
+			$this->sendMailingWithAttachment($mailingId, $user, $date, $mailinglistId, []);
+		}		
 
 		// Return number of users. In any failed, an exception has been thrown.
 		return count($users);
 	}
 
+	/**
+     * Send a created mailing
+	 * 
+	 * @param type $mailingId Unique identifier of the mailing to be send
+	 * @param array $user Map with details of the recipient.
+	 *	The map contains a key 'email' with the emailaddress of the recipient.
+	 *  Optional additional fields and values may be provided for replacement.
+	 * @param \DateTime $date the date when to send.
+	 *	If the date is now or in the past, the mail will be sent immediately.
+	 * @param null $mailinglistId Deprecated
+	 * @param string[] $attachments List of URL's to files to attach.
+	 * 
+	 * @return integer number of uses succesfully sent to
+	 * 
+	 * @throws EngineApiException
+	 */			 
 	public function sendMailingWithAttachment($mailingId, array $user, $date = null, $mailinglistId = null, $attachments = array())
 	{
-		// $mailinglistId is not used in iConneqt.
 
 		if (null === $date) {
 			$date = date("Y-m-d H:i:s");
@@ -266,9 +255,18 @@ class EngineApi implements EngineApiInterface
 		// E-ngine mailing = iConneqt delivery
 		// E-ngine mailing-subscriber = iConneqt delivery-recipient
 		try {
+			$email = $user['email'];
+			unset($user['email']);
+
 			$this->client->post("deliveries/{$mailingId}/recipients", [
-				'emailaddress' => $user,
+				'emailaddress' => $email,
 				'senddate' => $date,
+				'fields' => array_map(function($value, $field) {
+							return [
+								'field' => $field,
+								'value' => $value,
+							];
+						}, $user, array_keys($user)),
 				'attachments' => array_map(function($url) {
 							return [
 								'url' => $url,
