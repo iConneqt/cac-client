@@ -61,6 +61,20 @@ class EngineApi implements EngineApiInterface
 		$this->client = new \Iconneqt\Api\Rest\Client\Client('https://' . $this->config['domain'], $this->config['user'], $this->config['password']);
 	}
 
+    /**
+     * Create a new iConneqt Mailing from content
+     *
+     * @param string $htmlContent
+     * @param string $textContent
+     * @param string $subject
+     * @param string $fromName
+     * @param string $fromEmail
+     * @param string $replyTo
+     *
+     * @return integer
+     *
+     * @throws EngineApiException
+     */	
 	public function createMailingFromContent($htmlContent, $textContent, $subject, $fromName, $fromEmail, $replyTo = null, $title = null)
 	{
 		if (!$this->listid) {
@@ -82,15 +96,14 @@ class EngineApi implements EngineApiInterface
 				'subject' => utf8_encode($subject),
 				'html' => utf8_encode($htmlContent),
 				'text' => utf8_encode($textContent),
-			]);
+			], null, false, false);
 			
 			$deliveryid = $this->client->put("newsletters/{$newsletterid}/deliveries", [
 				'list' => $this->listid,
 				'from_name' => $fromName,
 				'from_email' => $fromEmail,
 				'reply_email' => $replyTo,
-			]);
-			var_dump($deliveryid);
+			], null, false, false);
 		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
 			throw new EngineApiException(sprintf('Could not create mailing from content. Engine Result: [%s]', (string) $e));
 		}
@@ -98,11 +111,40 @@ class EngineApi implements EngineApiInterface
 		return $deliveryid;
 	}
 
+    /**
+     * Create a new mailing based on an iConneqt Template
+     *
+     * @param integer $templateId
+     * @param string  $subject
+     * @param string  $fromName
+     * @param string  $fromEmail
+     * @param string  $replyTo
+     * @param string  $title
+     *
+     * @return integer
+     *
+     * @throws EngineApiException
+     */	
 	public function createMailingFromTemplate($templateId, $subject, $fromName, $fromEmail, $replyTo = null, $title = null)
 	{
 		return $this->createMailingFromTemplateWithReplacements($templateId, [], $subject, $fromName, $fromEmail, $replyTo = null, $title = null);
 	}
 
+    /**
+     * Create a new mailing based on an iConneqt Template
+     *
+     * @param integer $templateId
+     * @param array   $replacements
+     * @param string  $subject
+     * @param string  $fromName
+     * @param string  $fromEmail
+     * @param string  $replyTo
+     * @param string  $title
+     *
+     * @return integer
+     *
+     * @throws EngineApiException
+     */	
 	public function createMailingFromTemplateWithReplacements($templateId, $replacements, $subject, $fromName, $fromEmail, $replyTo = null, $title = null)
 	{
 		if (!$this->listid) {
@@ -133,14 +175,14 @@ class EngineApi implements EngineApiInterface
 				'template' => $templateId,
 				'subject' => $subject, // overwrites template subject
 				'replacements' => $fromto,
-			]);
+			], null, false, false);
 
 			$deliveryid = $this->client->put("newsletters/{$newsletterid}/deliveries", [
 				'list' => $this->listid,
 				'from_name' => $fromName,
 				'from_email' => $fromEmail,
 				'reply_email' => $replyTo,
-			]);
+			], null, false, false);
 		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
 			throw new EngineApiException(sprintf('Could not create mailing from template. Engine Result: [%s]', (string) $e));
 		}
@@ -148,6 +190,23 @@ class EngineApi implements EngineApiInterface
 		return $deliveryid;
 	}
 
+	/**
+     * Send a created mailing
+	 * 
+	 * @param type $mailingId Unique identifier of the mailing to be send
+	 * @param array $users List of maps, one for each user. Each map must
+	 *	contain a key 'email' with the emailaddress of the user. Optional
+	 *	additional fields and values may be provided for replacement.
+	 * @param \DateTime $date the date when to send.
+	 *	If the date is now or in history, the mail will be sent immediately
+	 *  (this may take a little longer to complete). If you are sending a lot of
+	 *	emails, you should set a date slightly in the future; mails will be send
+	 *	out within the next minute.
+	 * 
+	 * @return integer number of uses succesfully sent to
+	 * 
+	 * @throws EngineApiException
+	 */
 	public function sendMailing($mailingId, array $users, $date = null, $mailinglistId = null)
 	{
 		// $mailinglistId is ignored. Must be set for during creation of delivery
@@ -179,7 +238,7 @@ class EngineApi implements EngineApiInterface
 									'value' => $value,
 								];
 							}, $user, array_keys($user)),
-				]);
+				], null, false, false);
 			}
 		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
 			throw new EngineApiException(sprintf('Could not send mailing [%d]. Engine Result: [%s]', $mailingId, (string) $e));
@@ -216,7 +275,7 @@ class EngineApi implements EngineApiInterface
 								'name' => basename(parse_url($url, PHP_URL_PATH)),
 							];
 						}, $attachments),
-			]);
+			], null, false, false);
 		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
 			throw new EngineApiException(sprintf('Could not send mailing [%d]. Engine Result: [%s]', $mailingId, (string) $e));
 		}
@@ -224,6 +283,13 @@ class EngineApi implements EngineApiInterface
 		return true;
 	}
 
+    /**
+     * Select a Mailinglist
+     *
+     * @param integer $mailinglistId
+     *
+     * @return string
+     */	
 	public function selectMailinglist($mailinglistId)
 	{
 		$this->listid = $mailinglistId;
@@ -231,6 +297,17 @@ class EngineApi implements EngineApiInterface
 		return true;
 	}
 
+    /**
+     * Subscribe a User to a Mailinglist
+     *
+     * @param array   $user          The user data
+     * @param integer $mailinglistId The mailinglist id to subscribe the user
+     * @param bool    $confirmed     Is the user already confirmed
+     *
+     * @return string
+     *
+     * @throws EngineApiException
+     */	
 	public function subscribeUser(array $user, $mailinglistId, $confirmed = false)
 	{
 // @todo assume what is in the $user array?		
@@ -246,6 +323,17 @@ class EngineApi implements EngineApiInterface
 //        return $result;
 	}
 
+    /**
+     * Unsubscribe a User from a Mailinglist
+     *
+     * @param string  $email         The emailaddress to unsubscribe
+     * @param integer $mailinglistId The mailinglist id to unsubscribe the user from
+     * @param bool    $confirmed     Is the unsubscription already confirmed
+     *
+     * @return string
+     *
+     * @throws EngineApiException
+     */
 	public function unsubscribeUser($email, $mailinglistId, $confirmed = false)
 	{
 		// $mailinglistId and $confirmed are not used by iConneqt
@@ -253,7 +341,7 @@ class EngineApi implements EngineApiInterface
 		try {
 			$this->client->post("subscribers/{$email}/status", [
 				'status' => 'unsubscribed',
-			]);
+			], null, false, false);
 		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
 			throw new EngineApiException(sprintf('User not unsubscribed from mailinglist. Engine Result: [%s]', (string) $e));
 		}
@@ -261,10 +349,15 @@ class EngineApi implements EngineApiInterface
 		return 'OK';
 	}
 
+    /**
+     * Get all mailinglists of the account
+     *
+     * @return array
+     */
 	public function getMailinglists()
 	{
 		try {
-			$lists = $this->client->get("lists");
+			$lists = $this->client->get("lists", null, false, false);
 		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
 			throw new EngineApiException(sprintf('User not unsubscribed from mailinglist. Engine Result: [%s]', (string) $e));
 		}
@@ -278,6 +371,15 @@ class EngineApi implements EngineApiInterface
 		}, $lists);
 	}
 
+    /**
+     * Get all unsubscriptions from a mailingslist of a specific time period
+     *
+     * @param integer   $mailinglistId
+     * @param \DateTime $from
+     * @param \DateTime $till
+     *
+     * @return array
+     */
 	public function getMailinglistUnsubscriptions($mailinglistId, \DateTime $from, \DateTime $till = null)
 	{
 //@todo not yet implemented
@@ -298,6 +400,15 @@ class EngineApi implements EngineApiInterface
 //        return $result;
 	}
 
+    /**
+     * Get Mailinglist Subscriber information
+     *
+     * @param integer $mailinglistId
+     * @param string  $email
+     * @param array   $columns
+     *
+     * @return array
+     */
 	public function getMailinglistUser($mailinglistId, $email, $columns = array())
 	{
 //@todo not yet implemented
