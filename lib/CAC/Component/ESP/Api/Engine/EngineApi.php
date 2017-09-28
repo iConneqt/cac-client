@@ -17,6 +17,27 @@ class EngineApi implements EngineApiInterface
 {
 
 	/**
+	 * Map of "E-ngine fieldrole => iConneqt fieldrole".
+	 * E-ngine: https://wiki.e-ngine.nl/e-ngine/available-fieldnames/
+	 * iConneqt: /doc/Customfield roles.md
+	 * @var array
+	 */
+	private static $fieldrole_translations = [
+		'firstname' => 'namefirst',
+		'infix' => 'namelastprefix',
+		'lastname' => 'namelast',
+		'gender' => 'gender',
+		'dateofbirth' => 'dateofbirth',
+		'phonenumber' => 'telephone',
+		'street' => 'street',
+		'postalcode' => 'postalcode',
+		'housenumber' => 'streetnumber',
+		'housenumber_add' => '',
+		'city' => 'city',
+		'country' => 'country',
+	];
+
+	/**
 	 * Api configuration
 	 * @var array
 	 */
@@ -262,6 +283,10 @@ class EngineApi implements EngineApiInterface
 				'emailaddress' => $email,
 				'senddate' => $date,
 				'fields' => array_map(function($value, $field) {
+							if (isset(self::$fieldrole_translations[$field])) {
+								$field = self::$fieldrole_translations[$field];
+							}
+
 							return [
 								'field' => $field,
 								'value' => $value,
