@@ -330,7 +330,7 @@ class EngineApi implements EngineApiInterface
 	 *
 	 * @throws EngineApiException
 	 */
-	public function subscribeUser(array $user, $mailinglistId, $confirmed = false)
+	public function subscribeUser(array $user, $mailinglistId = null, $confirmed = false)
 	{
 		if ($mailinglistId === null) {
 			if ($this->listid) {
@@ -339,19 +339,19 @@ class EngineApi implements EngineApiInterface
 				throw new EngineApiException("No `mailinglist` selected");
 			}
 		}
-		
+
 		try {
 			$data = [
-				'emailaddress'	=> $user['email'],
+				'emailaddress' => $user['email'],
 			];
 			unset($user['email']);
-			
+
 			if ($confirmed) {
 				$data['confirmed'] = true;
 			}
-			
-			$fields = $this->client->get("lists/{$mailinglistId}/fields", null, false, false);			
-			$data['fields'] = [];		
+
+			$fields = $this->client->get("lists/{$mailinglistId}/fields", null, false, false);
+			$data['fields'] = [];
 			foreach ($fields as $field) {
 				// match by name				
 				if (isset($user[$field->name])) {
@@ -366,7 +366,7 @@ class EngineApi implements EngineApiInterface
 							// match by role
 							$data['fields'][$field->id] = $user[$e_role];
 							unset($user[$e_role]);
-							continue 2;	// next field!
+							continue 2; // next field!
 						}
 					}
 					// otherwise, match by iconneqt role
@@ -375,19 +375,23 @@ class EngineApi implements EngineApiInterface
 						unset($user[$field->role]);
 					}
 				}
-			}				
-			
+			}
+
 			// Handle remaining user fields
 			foreach ($user as $key => $value) {
 				switch ($user[$key]) {
-					case 'ip_subscription':		$data['requestip'] = $value; break;
-					case 'date_subscription':	$data['requestdate'] = strtotime($value); break;
-					case 'ip_confirmed':		$data['confirmip'] = $value; break;
-					case 'date_confirmed':		$data['confirmdate'] = $data['subscribedate'] = strtotime($value); break;
-					default:					$data[$key] = $value;
+					case 'ip_subscription': $data['requestip'] = $value;
+						break;
+					case 'date_subscription': $data['requestdate'] = strtotime($value);
+						break;
+					case 'ip_confirmed': $data['confirmip'] = $value;
+						break;
+					case 'date_confirmed': $data['confirmdate'] = $data['subscribedate'] = strtotime($value);
+						break;
+					default: $data[$key] = $value;
 				}
 			}
-			
+
 			$this->client->put("lists/{$mailinglistId}/subscribers", $data, null, false, false);
 		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
 			throw new EngineApiException(sprintf('User not subscribed to mailinglist. Engine Result: [%s]', (string) $e));
@@ -407,8 +411,16 @@ class EngineApi implements EngineApiInterface
 	 *
 	 * @throws EngineApiException
 	 */
-	public function unsubscribeUser($email, $mailinglistId, $confirmed = false)
+	public function unsubscribeUser($email, $mailinglistId = null, $confirmed = false)
 	{
+		if ($mailinglistId === null) {
+			if ($this->listid) {
+				$mailinglistId = $this->listid;
+			} else {
+				throw new EngineApiException("No `mailinglist` selected");
+			}
+		}
+
 		try {
 			$this->client->post("subscribers/{$email}/status", [
 				'status' => 'unsubscribed',
@@ -451,24 +463,45 @@ class EngineApi implements EngineApiInterface
 	 *
 	 * @return array
 	 */
-	public function getMailinglistUnsubscriptions($mailinglistId, \DateTime $from, \DateTime $till = null)
+	public function getMailinglistUnsubscriptions($mailinglistId = null, \DateTime $from, \DateTime $till = null)
 	{
-//@todo not yet implemented
-//        if (null === $till) {
-//            // till now if no till is given
-//            $till = new \DateTime();
-//        }
-//
-//        $result = $this->performRequest(
-//            'Mailinglist_getUnsubscriptions',
-//            $from->format('Y-m-d H:i:s'),
-//            $till->format('Y-m-d H:i:s'),
-//            null,
-//            array('self', 'admin', 'hard', 'soft', 'spam', 'zombie'),
-//            $mailinglistId
-//        );
-//
-//        return $result;
+		if ($mailinglistId === null) {
+			if ($this->listid) {
+				$mailinglistId = $this->listid;
+			} else {
+				throw new EngineApiException("No `mailinglist` selected");
+			}
+		}
+
+		if ($till === null) {
+			// till now if no till is given
+			$till = new \DateTime();
+		}
+
+		try {
+			$from = urlencode($from->format('Y-m-d H:i:s'));
+			$till = urlencode($till->format('Y-m-d H:i:s'));
+			
+			$count = $this->client->get("lists/{$mailinglistId}/unsubscribers/count?from={$from}&till=$till", null, false, false);
+						
+			$unsubscribers = [];
+			$limit = 100;
+			for ($offset = 0; $offset < $count; $offset += $limit) {
+				$page = $this->client->get("lists/{$mailinglistId}/unsubscribers?from={$from}&till=$till&offset={$offset}&limit={$limit}", null, false, false);
+				$unsubscribers = array_merge($unsubscribers, $page);
+			}
+		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
+			throw new EngineApiException(sprintf('User not unsubscribed from mailinglist. Engine Result: [%s]', (string) $e));
+		}
+		
+		return array_map(function($unsubscriber) {
+			return [
+				'email' => $unsubscriber->email,
+				'afgemeld' => 'self',
+			];
+		}, $unsubscribers);
+		
+		//array('self', 'admin', 'hard', 'soft', 'spam', 'zombie'),
 	}
 
 	/**
@@ -499,12 +532,12 @@ class EngineApi implements EngineApiInterface
 			$subscriber = $this->client->get("lists/{$mailinglistId}/subscribers/{$email}", null, false, false);
 			$data = $this->client->get("subscribers/{$subscriber->id}/fields", null, false, false);
 			$result = [];
-			
+
 			foreach ($columns as $column) {
 				if ($column == 'email') {
 					$result['email'] = $subscriber->email;
 				}
-				
+
 				$role = isset(self::$fieldrole_translations[$column]) ? self::$fieldrole_translations[$column] : null;
 				foreach ($fields as $field) {
 					if (($role && $field->role == $role) || ($field->name == $column) || ($field->id == $column)) {
@@ -518,7 +551,7 @@ class EngineApi implements EngineApiInterface
 					}
 				}
 			}
-			
+
 			return $result;
 		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
 			throw new EngineApiException(sprintf('User not on mailinglist. Engine Result: [%s]', (string) $e));
