@@ -343,9 +343,12 @@ class EngineApi implements EngineApiInterface
 		try {
 			$data = [
 				'emailaddress'	=> $user['email'],
-				'confirmed'		=> $confirmed,
 			];
 			unset($user['email']);
+			
+			if ($confirmed) {
+				$data['confirmed'] = true;
+			}
 			
 			$fields = $this->client->get("lists/{$mailinglistId}/fields", null, false, false);			
 			$data['fields'] = [];		
