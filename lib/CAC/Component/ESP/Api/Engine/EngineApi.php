@@ -332,17 +332,65 @@ class EngineApi implements EngineApiInterface
 	 */
 	public function subscribeUser(array $user, $mailinglistId, $confirmed = false)
 	{
-// @todo assume what is in the $user array?		
-//        $result = $this->performRequest('Subscriber_set', $user, !$confirmed, $mailinglistId);
-//
-//        if (!in_array($result, array('OK_UPDATED', 'OK_CONFIRM', 'OK_BEDANKT'))) {
-//            $e = new EngineApiException(sprintf('User not subscribed to mailinglist. Engine Result: [%s]', $result));
-//            $e->setEngineCode($result);
-//
-//            throw $e;
-//        }
-//
-//        return $result;
+		if ($mailinglistId === null) {
+			if ($this->listid) {
+				$mailinglistId = $this->listid;
+			} else {
+				throw new EngineApiException("No `mailinglist` selected");
+			}
+		}
+		
+		try {
+			$data = [
+				'emailaddress'	=> $user['email'],
+				'confirmed'		=> $confirmed,
+			];
+			unset($user['email']);
+			
+			$fields = $this->client->get("lists/{$mailinglistId}/fields", null, false, false);			
+			$data['fields'] = [];		
+			foreach ($fields as $field) {
+				// match by name				
+				if (isset($user[$field->name])) {
+					$data['fields'][$field->id] = $user[$field->name];
+					unset($user[$field->name]);
+				}
+				// else, match by role
+				elseif (!empty($field->role)) {
+					// match by e_role first
+					foreach (array_keys(self::$fieldrole_translations, $field->role) as $e_role) {
+						if (isset($user[$e_role])) {
+							// match by role
+							$data['fields'][$field->id] = $user[$e_role];
+							unset($user[$e_role]);
+							continue 2;	// next field!
+						}
+					}
+					// otherwise, match by iconneqt role
+					if (isset($user[$field->role])) {
+						$data['fields'][$field->id] = $user[$field->role];
+						unset($user[$field->role]);
+					}
+				}
+			}				
+			
+			// Handle remaining user fields
+			foreach ($user as $key => $value) {
+				switch ($user[$key]) {
+					case 'ip_subscription':		$data['requestip'] = $value; break;
+					case 'date_subscription':	$data['requestdate'] = strtotime($value); break;
+					case 'ip_confirmed':		$data['confirmip'] = $value; break;
+					case 'date_confirmed':		$data['confirmdate'] = $data['subscribedate'] = strtotime($value); break;
+					default:					$data[$key] = $value;
+				}
+			}
+			
+			$this->client->put("lists/{$mailinglistId}/subscribers", $data, null, false, false);
+		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
+			throw new EngineApiException(sprintf('User not subscribed to mailinglist. Engine Result: [%s]', (string) $e));
+		}
+
+		return 'OK_BEDANKT';
 	}
 
 	/**
