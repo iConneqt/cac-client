@@ -422,7 +422,7 @@ class EngineApi implements EngineApiInterface
 		}
 
 		try {
-			$this->client->post("subscribers/{$email}/status", [
+			$this->client->put("subscribers/{$email}/status", [
 				'status' => 'unsubscribed',
 					], null, false, false);
 		} catch (\Iconneqt\Api\Rest\Client\StatusCodeException $e) {
